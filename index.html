@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#6C63FF" />
+  <link rel="manifest" href="manifest.json" />
+  <title>NoteKeeper</title>
+  <style>
+    :root {
+      --primary: #6C63FF;
+      --primary-light: #EEF0FF;
+      --danger: #FF5C5C;
+      --bg: #F7F8FC;
+      --card: #FFFFFF;
+      --text: #1A1A2E;
+      --muted: #9A9AB0;
+      --border: #E8E8F0;
+      --shadow: 0 2px 12px rgba(108,99,255,0.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding-bottom: 100px;
+    }
+
+    /* Header */
+    .header {
+      background: var(--card);
+      padding: 52px 20px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .header h1 {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+    }
+
+    .header p {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 2px;
+    }
+
+    /* Note count badge */
+    .count-badge {
+      display: inline-block;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 99px;
+      margin-top: 8px;
+    }
+
+    /* Content */
+    .content { padding: 16px; }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    .empty .emoji { font-size: 3rem; display: block; margin-bottom: 12px; }
+    .empty p { font-size: 0.95rem; }
+
+    /* Note cards */
+    .note-card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      animation: slideUp 0.25s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .note-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+
+    .note-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      flex: 1;
+      line-height: 1.3;
+    }
+
+    .note-content {
+      color: #555;
+      font-size: 0.88rem;
+      line-height: 1.55;
+      margin-top: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .note-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 12px;
+    }
+
+    .note-date {
+      color: var(--muted);
+      font-size: 0.75rem;
+    }
+
+    .delete-btn {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 4px 10px;
+      border-radius: 8px;
+      background: #FFF0F0;
+    }
+
+    /* Color dots */
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    /* FAB */
+    .fab {
+      position: fixed;
+      bottom: 24px;
+      right: 50%;
+      transform: translateX(50%);
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 99px;
+      padding: 16px 32px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: 0 6px 24px rgba(108,99,255,0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      max-width: 390px;
+      width: calc(100% - 40px);
+      justify-content: center;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .fab:active { transform: translateX(50%) scale(0.97); box-shadow: 0 2px 10px rgba(108,99,255,0.3); }
+
+    /* Bottom sheet modal */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 100;
+      backdrop-filter: blur(2px);
+    }
+
+    .sheet {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%) translateY(100%);
+      width: 100%;
+      max-width: 430px;
+      background: var(--card);
+      border-radius: 24px 24px 0 0;
+      padding: 12px 20px 40px;
+      z-index: 101;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .sheet.open { transform: translateX(-50%) translateY(0); }
+    .overlay.open { display: block; }
+
+    .sheet-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 99px;
+      margin: 0 auto 20px;
+    }
+
+    .sheet h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    .field-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+    }
+
+    input[type=text], textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 14px;
+      color: var(--text);
+      font-size: 0.97rem;
+      outline: none;
+      font-family: inherit;
+      margin-bottom: 14px;
+      transition: border-color 0.2s;
+    }
+
+    input[type=text]:focus, textarea:focus {
+      border-color: var(--primary);
+    }
+
+    textarea { resize: none; height: 120px; }
+
+    /* Color picker */
+    .color-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .color-pick {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: 2.5px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s;
+    }
+
+    .color-pick.selected { border-color: var(--text); transform: scale(1.15); }
+
+    .save-btn {
+      width: 100%;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+
+    .save-btn:active { opacity: 0.85; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>NoteKeeper</h1>
+    <p>Your personal notes, always with you</p>
+    <span class="count-badge" id="countBadge">0 notes</span>
+  </div>
+
+  <div class="content" id="notesGrid"></div>
+
+  <button class="fab" onclick="openSheet()">
+    <span style="font-size:1.3rem">＋</span> New Note
+  </button>
+
+  <!-- Overlay -->
+  <div class="overlay" id="overlay" onclick="closeSheet()"></div>
+
+  <!-- Bottom Sheet -->
+  <div class="sheet" id="sheet">
+    <div class="sheet-handle"></div>
+    <h2>Add New Note</h2>
+
+    <div class="field-label">Title</div>
+    <input type="text" id="noteTitle" placeholder="Give your note a title..." />
+
+    <div class="field-label">Note</div>
+    <textarea id="noteContent" placeholder="Write something..."></textarea>
+
+    <div class="field-label">Color</div>
+    <div class="color-row" id="colorRow">
+      <div class="color-pick selected" data-color="#6C63FF" style="background:#6C63FF" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#FF6B6B" style="background:#FF6B6B" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#43C59E" style="background:#43C59E" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#F7C948" style="background:#F7C948" onclick="pickColor(this)"></div>
+      <div class="color-pick" data-color="#5BC4EF" style="background:#5BC4EF" onclick="pickColor(this)"></div>
+    </div>
+
+    <button class="save-btn" onclick="saveNote()">Save Note</button>
+  </div>
+
+  <script>
+    let notes = JSON.parse(localStorage.getItem('nk_notes') || '[]');
+    let selectedColor = '#6C63FF';
+
+    function render() {
+      const grid = document.getElementById('notesGrid');
+      const badge = document.getElementById('countBadge');
+      badge.textContent = notes.length + (notes.length === 1 ? ' note' : ' notes');
+
+      if (notes.length === 0) {
+        grid.innerHTML = `<div class="empty">
+          <span class="emoji">📝</span>
+          <p>No notes yet.<br>Tap <b>New Note</b> to get started!</p>
+        </div>`;
+        return;
+      }
+
+      grid.innerHTML = notes.map((n, i) => `
+        <div class="note-card">
+          <div class="note-header">
+            <div class="note-title">${esc(n.title)}</div>
+            <div class="color-dot" style="background:${n.color}"></div>
+          </div>
+          ${n.content ? `<div class="note-content">${esc(n.content)}</div>` : ''}
+          <div class="note-footer">
+            <span class="note-date">${n.date}</span>
+            <button class="delete-btn" onclick="deleteNote(${i})">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function esc(t) {
+      return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function openSheet() {
+      document.getElementById('sheet').classList.add('open');
+      document.getElementById('overlay').classList.add('open');
+      setTimeout(() => document.getElementById('noteTitle').focus(), 350);
+    }
+
+    function closeSheet() {
+      document.getElementById('sheet').classList.remove('open');
+      document.getElementById('overlay').classList.remove('open');
+    }
+
+    function pickColor(el) {
+      document.querySelectorAll('.color-pick').forEach(e => e.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedColor = el.dataset.color;
+    }
+
+    function saveNote() {
+      const title = document.getElementById('noteTitle').value.trim();
+      const content = document.getElementById('noteContent').value.trim();
+      if (!title && !content) { alert('Please write something first!'); return; }
+
+      const now = new Date();
+      notes.unshift({
+        title: title || 'Untitled',
+        content,
+        color: selectedColor,
+        date: now.toLocaleDateString('en-US', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' })
+      });
+
+      localStorage.setItem('nk_notes', JSON.stringify(notes));
+      document.getElementById('noteTitle').value = '';
+      document.getElementById('noteContent').value = '';
+      closeSheet();
+      render();
+    }
+
+    function deleteNote(i) {
+      if (confirm('Delete this note?')) {
+        notes.splice(i, 1);
+        localStorage.setItem('nk_notes', JSON.stringify(notes));
+        render();
+      }
+    }
+
+    render();
+
+    if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
+  </script>
+</body>
+</html>
